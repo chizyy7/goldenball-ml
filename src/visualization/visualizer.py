@@ -193,8 +193,14 @@ class BallonDorVisualizer:
         """
         logger.info("Creating feature contribution waterfall chart...")
 
-        # Calculate cumulative contributions
-        contributions = feature_values
+        # Calculate the contribution of the last element (to make sum equal to prediction)
+        # The sum of base_value + all contributions should equal prediction
+        # So the last contribution = prediction - base_value - sum(other contributions)
+        if len(feature_values) > 0:
+            contributions = np.append(feature_values[:-1], prediction - base_value - np.sum(feature_values[:-1]))
+        else:
+            contributions = np.array([prediction - base_value])
+
         cumulative = np.cumsum(np.insert(contributions, 0, base_value))
 
         # Create plot
@@ -204,6 +210,15 @@ class BallonDorVisualizer:
         x_pos = np.arange(len(feature_names) + 2)  # +2 for base and prediction
         bar_values = np.insert(contributions, 0, [base_value, prediction - np.sum(contributions) - base_value])
         bar_values = bar_values[:-1]  # Remove last element to match x_pos
+
+        # Ensure bar_values matches x_pos length
+        if len(bar_values) != len(x_pos):
+            # Truncate or pad to match
+            if len(bar_values) > len(x_pos):
+                bar_values = bar_values[:len(x_pos)]
+            else:
+                # Pad with zeros
+                bar_values = np.pad(bar_values, (0, len(x_pos) - len(bar_values)), 'constant')
 
         colors = []
         for val in bar_values:
@@ -218,8 +233,11 @@ class BallonDorVisualizer:
         # Connect with lines
         line_x = np.repeat(x_pos, 2)
         line_y = np.zeros(len(line_x))
-        line_y[::2] = cumulative[:-1]
-        line_y[1::2] = cumulative[1:]
+        # Only set values where we have data
+        min_len = min(len(line_y)//2, len(cumulative)-1)
+        if min_len > 0:
+            line_y[::2][:min_len] = cumulative[1:min_len+1]
+            line_y[1::2][:min_len] = cumulative[1:min_len+1]
         plt.plot(line_x, line_y, 'k-', linewidth=1.5)
 
         # Customize plot

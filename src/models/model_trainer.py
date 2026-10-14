@@ -91,7 +91,7 @@ class BallonDorModelTrainer:
             # Linear models
             'Ridge': Ridge(alpha=1.0, random_state=42),
             'ElasticNet': ElasticNet(alpha=0.1, l1_ratio=0.5, random_state=42),
-            'BayesianRidge': BayesianRidge(random_state=42),
+            'BayesianRidge': BayesianRidge(),
 
             # Other models
             'SVR': SVR(kernel='rbf', C=1.0, gamma='scale'),
@@ -212,7 +212,7 @@ class BallonDorModelTrainer:
                 model_names = ['RandomForest', 'XGBoost', 'LightGBM']
 
         estimators = [(name, self.models[name]) for name in model_names if name in self.models]
-        ensemble = VotingRegressor(estimators=estimators, weights=None, voting=voting_type)
+        ensemble = VotingRegressor(estimators=estimators, weights=None)
 
         logger.info(f"Created ensemble with models: {[name for name, _ in estimators]}")
         return ensemble

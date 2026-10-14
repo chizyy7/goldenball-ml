@@ -152,8 +152,10 @@ class GoldenBallMLPipeline:
 
         # Split data chronologically (older years for training, recent for validation)
         if 'year' in feature_df.columns:
-            # Sort by year for chronological split
-            sorted_idx = np.argsort(feature_df['year'])
+            # Get the year for each row in X (which has the same index as the filtered feature_df)
+            year_series = feature_df.loc[X.index, 'year']
+            # Sort by year
+            sorted_idx = np.argsort(year_series)
             X_sorted = X.iloc[sorted_idx]
             y_sorted = y.iloc[sorted_idx]
 
@@ -190,7 +192,11 @@ class GoldenBallMLPipeline:
         if ensemble_model is not None:
             ensemble_model.fit(X_train, y_train)
             ensemble_performance = self.model_trainer.evaluate_model(ensemble_model, X_val, y_val)
-            logger.info(f"Ensemble model validation MAE: {ensemble_performance.get('val_mae', 'N/A'):.4f}")
+            val_mae = ensemble_performance.get('val_mae', 'N/A')
+            if isinstance(val_mae, (int, float)):
+                logger.info(f"Ensemble model validation MAE: {val_mae:.4f}")
+            else:
+                logger.info(f"Ensemble model validation MAE: {val_mae}")
 
             # Add ensemble to models
             self.model_trainer.models['VotingEnsemble'] = ensemble_model
@@ -254,16 +260,18 @@ class GoldenBallMLPipeline:
         # Generate predictions
         y_pred = best_model.predict(X)
 
-        # Create predictions dataframe
+        # Create predictions dataframe with correct indexing
         predictions_df = pd.DataFrame({
             'player_name': [f'Player_{i}' for i in range(len(y_pred))],
             'actual_points': y.values if hasattr(y, 'values') else y,
             'predicted_points': y_pred
-        })
+        }, index=y.index if hasattr(y, 'index') else range(len(y)))
 
-        # If we have player names in feature_df, use them
+        # If we have player names in feature_df, use them (with proper indexing)
         if 'player_name' in feature_df.columns:
-            predictions_df['player_name'] = feature_df['player_name'].values
+            # Align player names with the indices in predictions_df
+            player_names_aligned = feature_df.loc[predictions_df.index, 'player_name']
+            predictions_df['player_name'] = player_names_aligned.values
 
         # Sort by predicted points
         predictions_df = predictions_df.sort_values('predicted_points', ascending=False).reset_index(drop=True)
@@ -280,17 +288,23 @@ class GoldenBallMLPipeline:
                           'Media Attention', 'Social Engagement', 'Big Goals',
                           'Clutch Factor', 'Positional Multiplier']
 
-        # Sample waterfall data
+        # Sample waterfall data - matching the number of features
         sample_waterfall_features = ['Base Score', 'Goals_per_90', 'Assists_per_90', 'Achievement_Score',
                                    'UCL_Winner', 'Media_Proxy', 'Social_Proxy']
-        sample_waterfall_values = [15.2, 8.7, 12.3, 5.0, 3.2, 2.1]
+        sample_waterfall_values = [15.2, 8.7, 12.3, 5.0, 3.2, 2.1, 1.5]  # 7 values to match 7 features
         base_value = 25.0
         sample_prediction = base_value + np.sum(sample_waterfall_values)
 
-        # Sample confidence interval data (top 10)
-        top_10_predictions = predictions_df.head(10)
-        sample_confidence_lower = top_10_predictions['predicted_points'].values * 0.9
-        sample_confidence_upper = top_10_predictions['predicted_points'].values * 1.1
+        # Sample confidence interval data (use available predictions)
+        sample_size = min(5, len(predictions_df))  # Use at most 5 samples or what's available
+        if sample_size > 0:
+            sample_predictions = predictions_df.head(sample_size)
+            sample_confidence_lower = sample_predictions['predicted_points'].values * 0.9
+            sample_confidence_upper = sample_predictions['predicted_points'].values * 1.1
+        else:
+            # Fallback if no predictions
+            sample_confidence_lower = np.array([0.0])
+            sample_confidence_upper = np.array([0.0])
 
         # Generate visualizations
         file_paths = self.visualizer.generate_all_visualizations(
@@ -308,7 +322,7 @@ class GoldenBallMLPipeline:
                 sample_prediction
             ),
             confidence_data=(
-                top_10_predictions,
+                sample_predictions,
                 sample_confidence_lower,
                 sample_confidence_upper
             ),
@@ -506,7 +520,7 @@ def main():
     """
     Main entry point for the GoldenBall ML pipeline
     """
-    print("🏆 GoldenBall ML - Ballon d'Or Prediction System")
+    print("GoldenBall ML - Ballon d'Or Prediction System")
     print("=" * 60)
 
     # Initialize and run pipeline
@@ -515,28 +529,28 @@ def main():
     try:
         results = pipeline.run_complete_pipeline()
 
-        print("\n✅ Pipeline completed successfully!")
-        print(f"⏱️  Duration: {results['duration_seconds']:.2f} seconds")
-        print(f"📊 Best Model: {results['model_training']['best_model']}")
-        print(f"🥇 Top 3 Predictions:")
+        print("\nPipeline completed successfully!")
+        print(f"Duration: {results['duration_seconds']:.2f} seconds")
+        print(f"Best Model: {results['model_training']['best_model']}")
+        print(f"Top 3 Predictions:")
         for i, pred in enumerate(results['final_prediction']['top_3'], 1):
             print(f"   {i}. {pred['player_name']}: {pred['predicted_points']:.1f} points "
                   f"(Confidence: {pred['confidence_score']:.1%})")
 
-        print(f"\n📁 Results saved to:")
+        print(f"\nResults saved to:")
         print(f"   - Reports: {pipeline.reports_dir}/")
         print(f"   - Models: {pipeline.models_dir}/")
         print(f"   - Assets: {pipeline.assets_dir}/")
         print(f"   - Data: {pipeline.data_dir}/")
 
-        print("\n📋 Next steps:")
+        print("\nNext steps:")
         print("   1. Review the generated visualizations in the assets/ folder")
         print("   2. Check the detailed reports in the reports/ folder")
         print("   3. Examine the trained models in the models/ folder")
         print("   4. Read the comprehensive README.md for full project documentation")
 
     except Exception as e:
-        print(f"\n❌ Pipeline failed: {str(e)}")
+        print(f"\nPipeline failed: {str(e)}")
         logger.error("Pipeline execution failed", exc_info=True)
         return 1
 

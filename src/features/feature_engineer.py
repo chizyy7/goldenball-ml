@@ -47,6 +47,12 @@ class BallonDorFeatureEngineer:
 
         df = stats_df.copy()
 
+        # Ensure required columns exist with defaults if missing
+        if 'position' not in df.columns:
+            df['position'] = 'Forward'  # Default position
+        if 'league' not in df.columns:
+            df['league'] = 'Other'  # Default league
+
         # Basic per-90 features
         df['goals_per_90'] = df['goals'] / (df['minutes_played'] / 90)
         df['assists_per_90'] = df['assists'] / (df['minutes_played'] / 90)
@@ -56,7 +62,7 @@ class BallonDorFeatureEngineer:
         df['xG_plus_xA_per_90'] = df['xG_per_90'] + df['xA_per_90']
 
         # Shot creation and advanced metrics (estimated from available data)
-        df['shot_creating_actions'] = df['assists'] * 2 + df['key_passes_estimated']  # Placeholder
+        df['shot_creating_actions'] = df['assists'] * 2  # Placeholder (using assists as proxy)
         df['progressive_carries_estimated'] = df['minutes_played'] * 0.1  # Placeholder
 
         # Position-specific adjustments
@@ -155,25 +161,26 @@ class BallonDorFeatureEngineer:
         # Since we don't have real contextual data sources, we'll create proxies
         # based on available data and reasonable assumptions
 
-        # Media attention proxy (based on performance and achievements)
+        # Media attention proxy (based on performance)
         df['media_attention_proxy'] = (
             df['goals_per_90'] * 0.3 +
             df['assists_per_90'] * 0.2 +
-            df['achievement_score'] * 0.1 +
             df['big_goals_ratio'] * 0.2 +
-            df['clutch_factor'] * 0.2
+            df['clutch_factor'] * 0.2 +
+            df['shot_creating_actions'] / df['shot_creating_actions'].max() * 0.1 if df['shot_creating_actions'].max() > 0 else 0
         )
 
         # Social media engagement proxy (based on fame and performance)
         df['social_engagement_proxy'] = np.minimum(
             (df['goals_per_90'] + df['assists_per_90']) * 2 +
-            df['achievement_score'] * 0.5, 10
+            df['shot_creating_actions'] / df['shot_creating_actions'].max() * 0.5 if df['shot_creating_actions'].max() > 0 else 0, 10
         )
 
         # Disciplinary record / fair play proxy (inverse - fewer cards = better score)
         # Since we don't have card data, we'll assume top players have good discipline
-        df['fair_play_score'] = np.maximum(5 - (df['achievement_score'] * 0.1), 1)
-        df['disciplinary_penalty'] = np.maximum(0, (df['achievement_score'] - 5) * 0.1)  # Penalty for over-achievement
+        # Use goals_per_90 as a proxy for prominence (more prominent players might get more cards, but we assume they are disciplined)
+        df['fair_play_score'] = np.maximum(5 - (df['goals_per_90'] * 0.1), 1)
+        df['disciplinary_penalty'] = np.maximum(0, (df['goals_per_90'] - 5) * 0.1)  # Penalty for high scoring (as proxy for prominence)
 
         # Expert commentary proxy (based on performance consistency)
         df['expert_commentary_proxy'] = (
@@ -187,15 +194,14 @@ class BallonDorFeatureEngineer:
         df['narrative_momentum'] = np.minimum(
             df['goals_per_match'] * 2 +
             df['assists_per_match'] * 1.5 +
-            df['achievement_score'] * 0.1, 5
+            df['shot_creating_actions'] / df['shot_creating_actions'].max() * 0.5 if df['shot_creating_actions'].max() > 0 else 0, 5
         )
 
         # Big stage performance (clutch games)
         df['big_stage_performance'] = (
             df['big_goals_ratio'] * 0.4 +
             df['clutch_factor'] * 0.3 +
-            df['achievement_score'] * 0.1 +
-            df['ucl_winner'] * 0.2
+            df['shot_creating_actions'] / df['shot_creating_actions'].max() * 0.2 if df['shot_creating_actions'].max() > 0 else 0
         )
 
         # Select and return key contextual features
@@ -259,6 +265,13 @@ class BallonDorFeatureEngineer:
                 feature_cols = [col for col in feature_df.columns
                               if col not in ['year', 'player_name', 'team']]
                 feature_matrix = feature_df[feature_cols].fillna(0)
+
+        # Drop rows where target is NaN (if any)
+        if target_series.isna().any():
+            logger.warning(f"Dropping {target_series.isna().sum()} rows with NaN target")
+            valid_idx = ~target_series.isna()
+            feature_matrix = feature_matrix[valid_idx]
+            target_series = target_series[valid_idx]
 
         logger.info(f"Feature matrix shape: {feature_matrix.shape}")
         logger.info(f"Target vector shape: {target_series.shape}")
