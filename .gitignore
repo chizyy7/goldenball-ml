@@ -1,0 +1,150 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# PyInstaller
+#  Usually these files are written by a python script from a temporary
+#  front-end before we start to build the .exe.
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+local_settings.py.db
+local_settings.py.oi
+local_settings.py.inst
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+.pybj/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+#   For a library or semi-app you might want to ignore these files but not a comment.
+.python-version
+
+# pipenv
+#   According to the pipenv official documentation (https://pipenv.pypa.io/en/latest/technical.html),
+#   this does not include Pipfile.lock, which will be treated as a project dependency file.
+#Pipfile.lock
+
+# PEP 582; used by e.g. venv in symlink setups to assign each library/package to its own directory.
+__pypackages__/
+
+# Celery stuff
+celerybeat-schedule
+celerybeat.pid
+celeryd-avail.log
+celeryd-pid.log
+celeryd.log
+celeryd.err
+
+# Virtual environment files
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Roamer project settings
+.roamer_project
+
+# Data files
+data/*.csv
+data/*.xlsx
+data/*.json
+
+# Model files
+models/*.pkl
+models/*.joblib
+models/*.h5
+
+# Notebook outputs
+notebooks/*.ipynb
+
+# Reports
+reports/*.csv
+reports/*.json
+
+# Assets
+assets/*.png
+assets/*.jpg
+assets/*.jpeg
+assets/*.svg
+assets/*.pdf
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+Thumbs.db
